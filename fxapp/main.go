@@ -10,24 +10,30 @@ import (
 )
 
 type Sender interface {
-	Send()
+	Send(to, body string)
 }
 
 type EmailSender struct{}
+
+type TelegramSender struct{}
 
 func (e *EmailSender) Send(to, body string) {
 	fmt.Printf("📧 Отправлено письмо на %s: %s\n", to, body)
 }
 
+func (e *TelegramSender) Send(to, body string) {
+	fmt.Printf("📧 Отправлено телеграм-сообщение на %s: %s\n", to, body)
+}
+
 type UserHandler struct {
-	sender *EmailSender
+	sender Sender
 }
 
-func NewEmailSender() *EmailSender {
-	return &EmailSender{}
+func NewSender() Sender {
+	return &TelegramSender{}
 }
 
-func NewUserHandler(sender *EmailSender) *UserHandler {
+func NewUserHandler(sender Sender) *UserHandler {
 	return &UserHandler{sender: sender}
 }
 
@@ -38,7 +44,7 @@ func (uh *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 func (uh *UserHandler) Akn(w http.ResponseWriter, r *http.Request) {
 	uh.sender.Send("user@example.com", "Вы замечены!")
-	fmt.Fprintln(w, "Пользователь зашел в на сайт.")
+	fmt.Fprintln(w, "Пользователь зашел на сайт.")
 }
 
 func NewMux(uh *UserHandler) *http.ServeMux {
@@ -74,10 +80,10 @@ func NewHTTPServer(mux *http.ServeMux, lc fx.Lifecycle) *http.Server {
 func main() {
 	app := fx.New(
 		fx.Provide(
+			NewSender,
+			NewUserHandler,
 			NewMux,
 			NewHTTPServer,
-			NewEmailSender,
-			NewUserHandler,
 		),
 		fx.Invoke(func(*http.Server) {}),
 	)
